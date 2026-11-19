@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quadro Automatic</title>
+<style>
+:root{
+  --bg:#f3f4f6; --card:#fff; --col:#e7e9ee; --txt:#1c2330; --mut:#667085; --line:#d5d9e0;
+  --acc:#0b6bcb; --red:#c62828; --redbg:#fdecea; --amber:#b26a00; --amberbg:#fff4e0; --green:#1b7f4b;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#14171c; --card:#232830; --col:#1b1f26; --txt:#e8ebf0; --mut:#98a2b3; --line:#343b46;
+    --acc:#5aa9f5; --red:#ff8a80; --redbg:#3a1f1f; --amber:#ffc266; --amberbg:#3a2e17; --green:#6fd39b; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+header h1{font-size:17px;margin:0 12px 0 0}
+button,select,input,textarea{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+#status{margin-left:auto;color:var(--mut);font-size:12px}
+#resumo{padding:8px 16px;color:var(--mut);display:flex;gap:16px;flex-wrap:wrap}
+#resumo b{color:var(--txt)}
+#quadro{display:flex;gap:12px;padding:8px 16px 24px;overflow-x:auto;align-items:flex-start}
+.col{background:var(--col);border-radius:12px;padding:10px;min-width:260px;width:280px;flex:0 0 auto}
+.col.sobre{outline:2px dashed var(--acc)}
+.col h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;margin:2px 4px 10px;display:flex;justify-content:space-between;align-items:center}
+.col h2 span{color:var(--mut);font-weight:500}
+.col h2 button{padding:0 8px;line-height:22px}
+.card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;cursor:grab}
+.card.alta{border-left-color:var(--red)} .card.média{border-left-color:var(--amber)} .card.baixa{border-left-color:var(--green)}
+.card.feito{opacity:.6} .card.feito .tit{text-decoration:line-through}
+.tit{font-weight:600;margin-bottom:4px;word-break:break-word}
+.meta{color:var(--mut);font-size:12px;margin-bottom:4px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--mut)}
+.chip.atras{background:var(--redbg);color:var(--red);border-color:transparent;font-weight:600}
+.chip.hoje{background:var(--amberbg);color:var(--amber);border-color:transparent;font-weight:600}
+.obs{font-size:12px;color:var(--mut);margin-top:4px}
+#vazio{max-width:560px;margin:60px auto;padding:0 16px;text-align:center}
+#vazio p{color:var(--mut)}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--txt);width:min(480px,92vw);padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog label{display:block;font-size:12px;color:var(--mut);margin:8px 0 2px}
+dialog input,dialog select,dialog textarea{width:100%}
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.acoes{display:flex;gap:8px;margin-top:14px}
+.acoes .esp{flex:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>Quadro Automatic</h1>
+  <button id="abrir" class="pri">Abrir quadro</button>
+  <input id="busca" type="search" placeholder="Buscar…" hidden>
+  <select id="fCliente" hidden></select>
+  <select id="fTipo" hidden></select>
+  <span id="status"></span>
+</header>
+<div id="resumo"></div>
+<div id="quadro"></div>
+<div id="vazio">
+  <h2>Abra o seu quadro</h2>
+  <p>Clique em <b>Abrir quadro</b> e escolha o arquivo <b>tarefas.md</b>, que fica na pasta <b>quadro</b>. Use o Chrome ou o Edge para poder arrastar os cartões e salvar.</p>
+  <p id="soLeitura" hidden>Este navegador só consegue mostrar o quadro, sem salvar. <input type="file" id="arq" accept=".md,text/markdown,text/plain"></p>
+</div>
+
+<dialog id="dlg">
+  <form method="dialog" id="form">
+    <label>Tarefa</label><input id="eTit" required>
+    <div class="duas">
+      <div><label>Tipo</label><select id="eTipo"></select></div>
+      <div><label>Prioridade</label><select id="ePri"><option value="">—</option><option>alta</option><option>média</option><option>baixa</option></select></div>
+      <div><label>Cliente</label><input id="eCli" list="lCli"></div>
+      <div><label>Projeto</label><input id="ePro" list="lPro"></div>
+      <div><label>Prazo</label><input id="ePrazo" type="date"></div>
+      <div><label>Coluna</label><select id="eCol"></select></div>
+    </div>
+    <label>Observação</label><textarea id="eObs" rows="2"></textarea>
+    <datalist id="lCli"></datalist><datalist id="lPro"></datalist>
+    <div class="acoes">
+      <button type="button" id="eDel">Excluir</button><span class="esp"></span>
+      <button type="button" id="eCanc">Cancelar</button>
+      <button class="pri" id="eOk" value="ok">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+"use strict";
+const TIPOS = ["cobrança","pagamento","desenvolvimento","entrega","visita","comercial","admin"];
+const COL_PADRAO = ["Entrada","A fazer","Fazendo","Aguardando","Feito"];
+const $ = id => document.getElementById(id);
+let handle = null, modificado = 0, somenteLeitura = false;
+let estado = { pre: [], colunas: [] };   // colunas: [{nome, tarefas:[{feito,titulo,campos:{}}]}]
+let editando = null;                      // {col, idx} ou {col, novo:true}
+
+// ---------- formato ----------
+function ler(texto){
+  const e = { pre: [], colunas: [] }; let col = null;
+  for (const linha of texto.replace(/\r/g,"").split("\n")){
+    const h = linha.match(/^##\s+(.+?)\s*$/);
+    if (h){ col = { nome: h[1], tarefas: [] }; e.colunas.push(col); continue; }
+    if (!col){ e.pre.push(linha); continue; }
+    const t = linha.match(/^\s*[-*]\s+\[( |x|X)\]\s+(.*)$/);
+    if (!t) continue;
+    const partes = t[2].split("|").map(s => s.trim());
+    const tarefa = { feito: t[1] !== " ", titulo: partes.shift(), campos: {} };
+    for (const p of partes){
+      const i = p.indexOf(":");
+      if (i < 1){ if (p) tarefa.campos.obs = (tarefa.campos.obs ? tarefa.campos.obs + "; " : "") + p; continue; }
+      tarefa.campos[p.slice(0,i).trim().toLowerCase()] = p.slice(i+1).trim();
+    }
+    col.tarefas.push(tarefa);
+  }
+  for (const n of COL_PADRAO) if (!e.colunas.some(c => c.nome.toLowerCase() === n.toLowerCase())) e.colunas.push({ nome: n, tarefas: [] });
+  while (e.pre.length && e.pre[e.pre.length-1].trim() === "") e.pre.pop();
+  return e;
+}
+const ORDEM = ["tipo","cliente","projeto","prazo","prioridade","obs","feito"];
+function escrever(e){
+  const limpa = s => String(s).replace(/\|/g,"/").replace(/\s+/g," ").trim();
+  const out = [...(e.pre.length ? e.pre : ["# Quadro de tarefas"]), ""];
+  for (const c of e.colunas){
+    out.push("## " + c.nome, "");
+    for (const t of c.tarefas){
+      const chaves = [...ORDEM.filter(k => k in t.campos), ...Object.keys(t.campos).filter(k => !ORDEM.includes(k))];
+      const campos = chaves.filter(k => t.campos[k]).map(k => `${k}: ${limpa(t.campos[k])}`);
+      out.push(`- [${t.feito ? "x" : " "}] ` + [limpa(t.titulo), ...campos].join(" | "));
+    }
+    if (c.tarefas.length) out.push("");
+  }
+  return out.join("\n");
+}
+const hoje = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const ehFeito = col => col.nome.toLowerCase() === "feito";
+function dias(prazo){ return Math.round((new Date(prazo+"T00:00") - new Date(hoje()+"T00:00")) / 864e5); }
+function dataBR(p){ const m = p.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? `${m[3]}/${m[2]}` : p; }
+
+// ---------- arquivo ----------
+function idb(modo, valor){
+  return new Promise(res => {
+    try{
+      const r = indexedDB.open("quadro-automatic", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("k");
+      r.onerror = () => res(null);
+      r.onsuccess = () => {
+        const tx = r.result.transaction("k", modo === "get" ? "readonly" : "readwrite");
+        const q = modo === "get" ? tx.objectStore("k").get("h") : tx.objectStore("k").put(valor, "h");
+        q.onsuccess = () => res(q.result || null); q.onerror = () => res(null);
+      };
+    }catch(_){ res(null); }
+  });
+}
+async function carregar(){
+  const f = await handle.getFile();
+  modificado = f.lastModified;
+  estado = ler(await f.text());
+  desenhar(); status("Atualizado às " + new Date().toLocaleTimeString("pt-BR").slice(0,5));
+}
+async function mudouFora(){
+  if (!handle) return false;
+  try{ return (await handle.getFile()).lastModified !== modificado; }catch(_){ return false; }
+}
+async function salvar(){
+  if (somenteLeitura || !handle){ desenhar(); return; }
+  try{
+    const w = await handle.createWritable();
+    await w.write(escrever(estado)); await w.close();
+    modificado = (await handle.getFile()).lastModified;
+    status("Salvo às " + new Date().toLocaleTimeString("pt-BR").slice(0,5));
+  }catch(err){ status("Não consegui salvar: " + err.message); }
+  desenhar();
+}
+// Antes de alterar: se o Claude mexeu no arquivo, recarrega e pede para repetir.
+async function podeAlterar(){
+  if (await mudouFora()){ await carregar(); status("O quadro foi atualizado por fora. Repita a alteração."); return false; }
+  return true;
+}
+function status(t){ $("status").textContent = t; }
+
+async function abrir(){
+  if (!window.showOpenFilePicker){ $("soLeitura").hidden = false; return; }
+  try{
+    let h = await idb("get");
+    if (h && (await h.requestPermission({ mode: "readwrite" })) !== "granted") h = null;
+    if (!h){
+      [h] = await showOpenFilePicker({ types: [{ description: "Quadro (tarefas.md)", accept: { "text/markdown": [".md"] } }] });
+      if ((await h.requestPermission({ mode: "readwrite" })) !== "granted") somenteLeitura = true;
+      idb("put", h);
+    }
+    handle = h; await carregar();
+  }catch(err){ if (err.name !== "AbortError") status("Erro ao abrir: " + err.message); }
+}
+$("abrir").onclick = async () => { if (handle){ await idb("put", null); handle = null; } abrir(); };
+$("arq").onchange = async ev => { const f = ev.target.files[0]; if (!f) return; somenteLeitura = true; estado = ler(await f.text()); desenhar(); status("Somente leitura"); };
+setInterval(async () => { if (handle && !$("dlg").open && await mudouFora()) carregar(); }, 3000);
+
+// ---------- tela ----------
+function el(tag, cls, txt){ const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+function opcoes(sel, titulo, valores){
+  const atual = sel.value; sel.replaceChildren(new Option(titulo, ""));
+  for (const v of valores) sel.add(new Option(v, v));
+  sel.value = valores.includes(atual) ? atual : "";
+}
+function desenhar(){
+  const todas = estado.colunas.flatMap(c => c.tarefas);
+  const unicos = k => [...new Set(todas.map(t => t.campos[k]).filter(Boolean))].sort((a,b) => a.localeCompare(b,"pt-BR"));
+  const clientes = unicos("cliente"), projetos = unicos("projeto");
+  opcoes($("fCliente"), "Todos os clientes", clientes);
+  opcoes($("fTipo"), "Todos os tipos", [...new Set([...TIPOS, ...unicos("tipo")])]);
+  $("lCli").replaceChildren(...clientes.map(v => new Option(v)));
+  $("lPro").replaceChildren(...projetos.map(v => new Option(v)));
+  const temQuadro = estado.colunas.length > 0;
+  for (const id of ["busca","fCliente","fTipo"]) $(id).hidden = !temQuadro;
+  $("vazio").hidden = temQuadro;
+  $("abrir").textContent = temQuadro ? "Trocar arquivo" : "Abrir quadro";
+  $("abrir").className = temQuadro ? "" : "pri";
+
+  const busca = $("busca").value.trim().toLowerCase(), fc = $("fCliente").value, ft = $("fTipo").value;
+  const passa = t => (!fc || t.campos.cliente === fc) && (!ft || t.campos.tipo === ft) &&
+    (!busca || (t.titulo + " " + Object.values(t.campos).join(" ")).toLowerCase().includes(busca));
+
+  const abertas = estado.colunas.filter(c => !ehFeito(c)).flatMap(c => c.tarefas);
+  const comPrazo = abertas.filter(t => /^\d{4}-\d{2}-\d{2}$/.test(t.campos.prazo || ""));
+  const r = $("resumo"); r.replaceChildren();
+  if (temQuadro){
+    const item = (n, rot) => { const s = el("span"); s.append(el("b", "", n), " " + rot); r.append(s); };
+    item(abertas.length, "abertas");
+    item(comPrazo.filter(t => dias(t.campos.prazo) < 0).length, "atrasadas");
+    item(comPrazo.filter(t => dias(t.campos.prazo) === 0).length, "vencem hoje");
+    item(abertas.filter(t => t.campos.tipo === "cobrança").length, "cobranças");
+    item(abertas.filter(t => t.campos.tipo === "pagamento").length, "pagamentos");
+  }
+
+  const q = $("quadro"); q.replaceChildren();
+  estado.colunas.forEach((col, ci) => {
+    const c = el("div", "col"), h = el("h2");
+    const visiveis = col.tarefas.map((t, i) => [t, i]).filter(([t]) => passa(t));
+    const esq = el("div"); esq.append(col.nome + " ", el("span", "", visiveis.length));
+    const mais = el("button", "", "+"); mais.title = "Nova tarefa"; mais.onclick = () => editar(ci, null);
+    h.append(esq, mais); c.append(h);
+    c.ondragover = ev => { ev.preventDefault(); c.classList.add("sobre"); };
+    c.ondragleave = () => c.classList.remove("sobre");
+    c.ondrop = ev => { ev.preventDefault(); c.classList.remove("sobre"); const [a, b] = ev.dataTransfer.getData("text/plain").split(":").map(Number); mover(a, b, ci); };
+    for (const [t, ti] of visiveis){
+      const k = el("div", "card " + (t.campos.prioridade || "") + (ehFeito(col) ? " feito" : ""));
+      k.draggable = !somenteLeitura;
+      k.ondragstart = ev => ev.dataTransfer.setData("text/plain", ci + ":" + ti);
+      k.onclick = () => editar(ci, ti);
+      k.append(el("div", "tit", t.titulo));
+      const meta = [t.campos.cliente, t.campos.projeto].filter(Boolean).join(" · ");
+      if (meta) k.append(el("div", "meta", meta));
+      const chips = el("div", "chips");
+      if (t.campos.tipo) chips.append(el("span", "chip", t.campos.tipo));
+      const p = t.campos.prazo;
+      if (p){
+        const valido = /^\d{4}-\d{2}-\d{2}$/.test(p), d = valido ? dias(p) : null;
+        if (ehFeito(col) || !valido) chips.append(el("span", "chip", dataBR(p)));
+        else if (d < 0) chips.append(el("span", "chip atras", `atrasada ${-d}d · ${dataBR(p)}`));
+        else if (d === 0) chips.append(el("span", "chip hoje", "hoje"));
+        else chips.append(el("span", "chip", (d === 1 ? "amanhã" : "em " + d + "d") + " · " + dataBR(p)));
+      }
+      if (chips.children.length) k.append(chips);
+      if (t.campos.obs) k.append(el("div", "obs", t.campos.obs));
+      c.append(k);
+    }
+    q.append(c);
+  });
+}
+for (const id of ["busca","fCliente","fTipo"]) $(id).oninput = desenhar;
+
+function ajustarFeito(t, col){
+  t.feito = ehFeito(col);
+  if (t.feito){ if (!t.campos.feito) t.campos.feito = hoje(); } else delete t.campos.feito;
+}
+async function mover(de, idx, para){
+  if (de === para || somenteLeitura || !(await podeAlterar())) return;
+  const [t] = estado.colunas[de].tarefas.splice(idx, 1);
+  if (!t) return;
+  ajustarFeito(t, estado.colunas[para]);
+  estado.colunas[para].tarefas.push(t);
+  salvar();
+}
+function editar(ci, ti){
+  if (somenteLeitura) return;
+  editando = { col: ci, idx: ti };
+  const t = ti == null ? { titulo: "", campos: {} } : estado.colunas[ci].tarefas[ti];
+  $("eTipo").replaceChildren(new Option("—", ""), ...[...new Set([...TIPOS, t.campos.tipo].filter(Boolean))].map(v => new Option(v, v)));
+  $("eCol").replaceChildren(...estado.colunas.map((c, i) => new Option(c.nome, i)));
+  $("eTit").value = t.titulo; $("eTipo").value = t.campos.tipo || ""; $("ePri").value = t.campos.prioridade || "";
+  $("eCli").value = t.campos.cliente || ""; $("ePro").value = t.campos.projeto || "";
+  $("ePrazo").value = /^\d{4}-\d{2}-\d{2}$/.test(t.campos.prazo || "") ? t.campos.prazo : "";
+  $("eObs").value = t.campos.obs || ""; $("eCol").value = ci;
+  $("eDel").hidden = ti == null;
+  $("dlg").showModal(); $("eTit").focus();
+}
+$("eCanc").onclick = () => $("dlg").close();
+$("eDel").onclick = async () => {
+  $("dlg").close();
+  if (!(await podeAlterar())) return;
+  estado.colunas[editando.col].tarefas.splice(editando.idx, 1); salvar();
+};
+$("form").onsubmit = async ev => {
+  ev.preventDefault(); $("dlg").close();
+  const v = { titulo: $("eTit").value.trim(), tipo: $("eTipo").value, prioridade: $("ePri").value, cliente: $("eCli").value.trim(),
+              projeto: $("ePro").value.trim(), prazo: $("ePrazo").value, obs: $("eObs").value.trim(), col: Number($("eCol").value) };
+  if (!v.titulo || !(await podeAlterar())) return;
+  const { col, idx } = editando;
+  const t = idx == null ? { feito: false, titulo: "", campos: {} } : estado.colunas[col].tarefas[idx];
+  t.titulo = v.titulo;
+  for (const k of ["tipo","cliente","projeto","prazo","prioridade","obs"]){ if (v[k]) t.campos[k] = v[k]; else delete t.campos[k]; }
+  if (idx == null) estado.colunas[v.col].tarefas.push(t);
+  else if (v.col !== col){ estado.colunas[col].tarefas.splice(idx, 1); estado.colunas[v.col].tarefas.push(t); }
+  ajustarFeito(t, estado.colunas[v.col]);
+  salvar();
+};
+
+// Ao abrir a página: se já escolheu o arquivo antes, basta um clique para reabrir.
+(async () => {
+  if (!window.showOpenFilePicker){ $("soLeitura").hidden = false; $("abrir").hidden = true; return; }
+  const h = await idb("get");
+  if (!h) return;
+  if ((await h.queryPermission({ mode: "readwrite" })) === "granted"){ handle = h; carregar(); }
+  else { $("abrir").textContent = "Reabrir quadro"; }
+})();
+</script>
+</body>
+</html>
